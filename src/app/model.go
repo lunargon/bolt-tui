@@ -95,6 +95,7 @@ func DefaultKeyMap() KeyMap {
 			key.WithKeys("tab"),
 			key.WithHelp("tab", "next tab"),
 		),
+		// Not implemented yet
 		SelectTab: key.NewBinding(
 			key.WithKeys("1", "2", "3", "4", "5", "6", "7", "8", "9"),
 			key.WithHelp("1-9", "select tab"),
@@ -469,16 +470,16 @@ func (m *Model) Close() {
 // ShortHelp returns keybindings to be shown in the short help view.
 // It's part of the help.KeyMap interface.
 func (k KeyMap) ShortHelp() []key.Binding {
-	return []key.Binding{k.Up, k.Down, k.Enter, k.Esc, k.New, k.Help, k.Quit}
+	return []key.Binding{k.Up, k.Down, k.Enter, k.Esc, k.NewTab, k.New, k.Help, k.Quit}
 }
 
 // FullHelp returns keybindings for the expanded help view.
 // It's part of the help.KeyMap interface.
 func (k KeyMap) FullHelp() [][]key.Binding {
 	return [][]key.Binding{
-		{k.Up, k.Down, k.Left, k.Right},     // first column
-		{k.Enter, k.Esc, k.New, k.Delete},   // second column
-		{k.PrevTab, k.NextTab, k.SelectTab}, // third column
-		{k.Help, k.Quit},                    // fourth column
+		{k.Up, k.Down, k.Left, k.Right},             // first column
+		{k.Enter, k.Esc, k.NewTab, k.New, k.Delete}, // second column
+		{k.PrevTab, k.NextTab, k.SelectTab},         // third column
+		{k.Help, k.Quit},                            // fourth column
 	}
 }
