@@ -44,6 +44,7 @@ type KeyMap struct {
 	NextTab      key.Binding
 	SelectTab    key.Binding
 	Edit         key.Binding
+	EditBucket   key.Binding
 }
 
 // DefaultKeyMap returns default keybindings
@@ -77,6 +78,10 @@ func DefaultKeyMap() KeyMap {
 			key.WithKeys("ctrl+d"),
 			key.WithHelp("ctrl+d", "delete"),
 		),
+		DeleteBucket: key.NewBinding(
+			key.WithKeys("ctrl+r"),
+			key.WithHelp("ctrl+r", "remove bucket"),
+		),
 		Enter: key.NewBinding(
 			key.WithKeys("enter"),
 			key.WithHelp("enter", "select/confirm"),
@@ -106,13 +111,13 @@ func DefaultKeyMap() KeyMap {
 			key.WithKeys("1", "2", "3", "4", "5", "6", "7", "8", "9"),
 			key.WithHelp("1-9", "select tab"),
 		),
+		EditBucket: key.NewBinding(
+			key.WithKeys("ctrl+b"),
+			key.WithHelp("ctrl+b", "edit bucket name"),
+		),
 		Edit: key.NewBinding(
 			key.WithKeys("ctrl+e"),
 			key.WithHelp("ctrl+e", "edit bucket/key"),
-		),
-		DeleteBucket: key.NewBinding(
-			key.WithKeys("ctrl+r"),
-			key.WithHelp("ctrl+r", "delete bucket"),
 		),
 	}
 }
@@ -309,20 +314,21 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 
 		case key.Matches(msg, m.keyMap.Edit):
-			if m.state == stateBuckets && len(m.buckets) > 0 {
-				// Check if we have a selected key in the table
-				if len(m.table.Rows()) > 0 {
-					selectedRow := m.table.SelectedRow()
-					if selectedRow != nil {
-						// Edit the selected key
-						m.originalKeyName = selectedRow[0]
-						m.currentKey = m.originalKeyName
-						m.textInput.SetValue(m.originalKeyName)
-						m.state = stateEditKey
-						return m, textinput.Blink
-					}
+			if m.state == stateBuckets && len(m.buckets) > 0 && len(m.table.Rows()) > 0 {
+				selectedRow := m.table.SelectedRow()
+				if selectedRow != nil {
+					// Edit the selected key
+					m.originalKeyName = selectedRow[0]
+					m.currentKey = m.originalKeyName
+					m.textInput.SetValue(m.originalKeyName)
+					m.state = stateEditKey
+					return m, textinput.Blink
 				}
-				// If no key selected, edit the current bucket
+			}
+
+		case key.Matches(msg, m.keyMap.EditBucket):
+			if m.state == stateBuckets && len(m.buckets) > 0 {
+				// Edit the current bucket name
 				m.originalBucketName = m.currentBucket
 				m.textInput.SetValue(m.currentBucket)
 				m.state = stateEditBucket
@@ -472,6 +478,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					return m, textinput.Blink
 				}
 			}
+
 		}
 
 	case tea.WindowSizeMsg:
@@ -631,16 +638,17 @@ func (m *Model) Close() {
 // ShortHelp returns keybindings to be shown in the short help view.
 // It's part of the help.KeyMap interface.
 func (k KeyMap) ShortHelp() []key.Binding {
-	return []key.Binding{k.Up, k.Down, k.Enter, k.Esc, k.NewTab, k.New, k.Edit, k.Delete, k.DeleteBucket, k.Help, k.Quit}
+	return []key.Binding{k.Up, k.Down, k.Enter, k.Esc, k.NewTab, k.New,
+		k.Edit, k.EditBucket, k.Delete, k.DeleteBucket, k.Help, k.Quit}
 }
 
 // FullHelp returns keybindings for the expanded help view.
 // It's part of the help.KeyMap interface.
 func (k KeyMap) FullHelp() [][]key.Binding {
 	return [][]key.Binding{
-		{k.Up, k.Down, k.Left, k.Right},                                     // first column
-		{k.Enter, k.Esc, k.NewTab, k.New, k.Edit, k.Delete, k.DeleteBucket}, // second column
-		{k.PrevTab, k.NextTab, k.SelectTab},                                 // third column
-		{k.Help, k.Quit},                                                    // fourth column
+		{k.Up, k.Down, k.Left, k.Right}, // first column
+		{k.Enter, k.Esc, k.NewTab, k.New, k.Edit, k.EditBucket, k.Delete, k.DeleteBucket}, // second column
+		{k.PrevTab, k.NextTab, k.SelectTab},                                               // third column
+		{k.Help, k.Quit},                                                                  // fourth column
 	}
 }
