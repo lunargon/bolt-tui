@@ -145,15 +145,17 @@ GOOS=windows GOARCH=amd64 go build -o bolt-tui-windows.exe
 ```
 
 ## Todo
+
 - [ ] Update UI
 - [ ] Add feature to jump tab with number
+- [ ] Have switch to view `byte` value or `string` value
 
 ## Contributing
 
 1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+2. Create a feature branch (`git checkout -b feat/amazing-feature`)
 3. Commit your changes (`git commit -m 'Add some amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
+4. Push to the branch (`git push origin feat/amazing-feature`)
 5. Open a Pull Request
 
 
