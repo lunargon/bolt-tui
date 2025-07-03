@@ -1,5 +1,8 @@
 # Bolt TUI ( bolt-tui)
 
+[![License](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Go Report Card](https://goreportcard.com/badge/github.com/lunargon/bolt-tui)](https://goreportcard.com/report/github.com/lunargon/bolt-tui)
+
 A Terminal User Interface (TUI) for viewing and managing BoltDB files. Built with Go and the Bubbletea framework.
 
 ## Features
