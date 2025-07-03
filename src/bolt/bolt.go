@@ -109,3 +109,84 @@ func (b *DB) DeleteValue(bucketName, key string) error {
 		return bucket.Delete([]byte(key))
 	})
 }
+
+// RenameBucket renames a bucket by creating a new bucket with the new name,
+// copying all key-value pairs, then deleting the old bucket
+func (b *DB) RenameBucket(oldName, newName string) error {
+	if oldName == newName {
+		return nil // No change needed
+	}
+
+	if newName == "" {
+		return fmt.Errorf("new bucket name cannot be empty")
+	}
+
+	return b.db.Update(func(tx *bolt.Tx) error {
+		// Get the old bucket
+		oldBucket := tx.Bucket([]byte(oldName))
+		if oldBucket == nil {
+			return fmt.Errorf("bucket %s not found", oldName)
+		}
+
+		// Check if new bucket already exists
+		if tx.Bucket([]byte(newName)) != nil {
+			return fmt.Errorf("bucket %s already exists", newName)
+		}
+
+		// Create the new bucket
+		newBucket, err := tx.CreateBucketIfNotExists([]byte(newName))
+		if err != nil {
+			return err
+		}
+
+		// Copy all key-value pairs from old bucket to new bucket
+		err = oldBucket.ForEach(func(k, v []byte) error {
+			return newBucket.Put(k, v)
+		})
+		if err != nil {
+			return err
+		}
+
+		// Delete the old bucket
+		return tx.DeleteBucket([]byte(oldName))
+	})
+}
+
+// RenameKey renames a key within a bucket by copying the value to the new key
+// and deleting the old key
+func (b *DB) RenameKey(bucketName, oldKey, newKey string) error {
+	if oldKey == newKey {
+		return nil // No change needed
+	}
+
+	if newKey == "" {
+		return fmt.Errorf("new key name cannot be empty")
+	}
+
+	return b.db.Update(func(tx *bolt.Tx) error {
+		bucket := tx.Bucket([]byte(bucketName))
+		if bucket == nil {
+			return fmt.Errorf("bucket %s not found", bucketName)
+		}
+
+		// Get the value of the old key
+		value := bucket.Get([]byte(oldKey))
+		if value == nil {
+			return fmt.Errorf("key %s not found in bucket %s", oldKey, bucketName)
+		}
+
+		// Check if new key already exists
+		if bucket.Get([]byte(newKey)) != nil {
+			return fmt.Errorf("key %s already exists in bucket %s", newKey, bucketName)
+		}
+
+		// Put the value with the new key
+		err := bucket.Put([]byte(newKey), value)
+		if err != nil {
+			return err
+		}
+
+		// Delete the old key
+		return bucket.Delete([]byte(oldKey))
+	})
+}
