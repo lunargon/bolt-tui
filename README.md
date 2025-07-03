@@ -58,6 +58,7 @@ Use current directory:
 
 ### Keyboard Shortcuts
 
+#### General Navigation
 | Key | Action |
 |-----|--------|
 | `↑/k` | Move up |
@@ -65,15 +66,31 @@ Use current directory:
 | `←/h` | Move left |
 | `→/l` | Move right |
 | `Enter` | Select/Confirm |
-| `Esc` | Go back |
-| `Tab` | Next tab |
-| `Shift+Tab` | Previous tab |
-| `1-9` | Select tab by number |
-| `Ctrl+t` | New tab |
-| `Ctrl+n` | New key/bucket |
-| `Ctrl+d` | Delete |
+| `Esc` | Go back/Cancel |
 | `Ctrl+c` | Quit |
 | `?` | Toggle help |
+
+#### Tab Management
+| Key | Action |
+|-----|--------|
+| `Tab` | Next tab |
+| `Shift+Tab` | Previous tab |
+| `1-9` | Select tab by number ( Not implement this) |
+
+#### Bucket Operations
+| Key | Action |
+|-----|--------|
+| `Ctrl+t` | Create new bucket |
+| `Ctrl+b` | Edit bucket name |
+| `Ctrl+r` | Remove bucket |
+
+#### Key-Value Operations
+| Key | Action |
+|-----|--------|
+| `Ctrl+n` | Create new key |
+| `Ctrl+e` | Edit key name |
+| `Ctrl+d` | Delete key |
+| `Enter` | Edit value (when key selected) |
 
 ## Project Structure
 
@@ -146,6 +163,7 @@ GOOS=windows GOARCH=amd64 go build -o bolt-tui-windows.exe
 
 ## Todo
 
+- [ ] **Refactor**
 - [ ] Update UI
 - [ ] Add feature to jump tab with number
 - [ ] Have switch to view `byte` value or `string` value
