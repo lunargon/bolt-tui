@@ -20,24 +20,30 @@ const (
 	stateCreateBucket
 	stateCreateKey
 	stateEditValue
+	stateEditBucket
+	stateEditKey
+	stateConfirmDelete
+	stateConfirmDeleteBucket
 )
 
 // KeyMap defines keybindings
 type KeyMap struct {
-	Up        key.Binding
-	Down      key.Binding
-	Left      key.Binding
-	Right     key.Binding
-	NewTab    key.Binding
-	New       key.Binding
-	Delete    key.Binding
-	Enter     key.Binding
-	Esc       key.Binding
-	Quit      key.Binding
-	Help      key.Binding
-	PrevTab   key.Binding
-	NextTab   key.Binding
-	SelectTab key.Binding
+	Up           key.Binding
+	Down         key.Binding
+	Left         key.Binding
+	Right        key.Binding
+	NewTab       key.Binding
+	New          key.Binding
+	Delete       key.Binding
+	DeleteBucket key.Binding
+	Enter        key.Binding
+	Esc          key.Binding
+	Quit         key.Binding
+	Help         key.Binding
+	PrevTab      key.Binding
+	NextTab      key.Binding
+	SelectTab    key.Binding
+	Edit         key.Binding
 }
 
 // DefaultKeyMap returns default keybindings
@@ -100,6 +106,14 @@ func DefaultKeyMap() KeyMap {
 			key.WithKeys("1", "2", "3", "4", "5", "6", "7", "8", "9"),
 			key.WithHelp("1-9", "select tab"),
 		),
+		Edit: key.NewBinding(
+			key.WithKeys("ctrl+e"),
+			key.WithHelp("ctrl+e", "edit bucket/key"),
+		),
+		DeleteBucket: key.NewBinding(
+			key.WithKeys("ctrl+r"),
+			key.WithHelp("ctrl+r", "delete bucket"),
+		),
 	}
 }
 
@@ -142,22 +156,27 @@ func DefaultStyles() Styles {
 }
 
 type Model struct {
-	db            *bolt.DB
-	state         state
-	buckets       []string
-	activeTab     int
-	table         table.Model
-	currentBucket string
-	currentKey    string
-	value         string
-	textInput     textinput.Model
-	help          help.Model
-	keyMap        KeyMap
-	styles        Styles
-	width         int
-	height        int
-	showHelp      bool
-	err           error
+	db                 *bolt.DB
+	state              state
+	buckets            []string
+	activeTab          int
+	table              table.Model
+	currentBucket      string
+	currentKey         string
+	value              string
+	textInput          textinput.Model
+	help               help.Model
+	keyMap             KeyMap
+	styles             Styles
+	width              int
+	height             int
+	showHelp           bool
+	err                error
+	originalBucketName string // For storing original bucket name during editing
+	originalKeyName    string // For storing original key name during editing
+	deleteKey          string // For storing key name to be deleted
+	deleteBucket       string // For storing bucket name to be deleted
+	newlyCreatedBucket string // For tracking newly created bucket to make it active
 }
 
 func New(dbPath string) (*Model, error) {
@@ -267,7 +286,9 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 
 		case key.Matches(msg, m.keyMap.Esc):
-			if m.state == stateCreateBucket || m.state == stateCreateKey {
+			if m.state == stateCreateBucket || m.state == stateCreateKey ||
+				m.state == stateEditBucket || m.state == stateEditKey || m.state == stateEditValue ||
+				m.state == stateConfirmDelete || m.state == stateConfirmDeleteBucket {
 				m.state = stateBuckets
 				return m, nil
 			}
@@ -287,6 +308,46 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, textinput.Blink
 			}
 
+		case key.Matches(msg, m.keyMap.Edit):
+			if m.state == stateBuckets && len(m.buckets) > 0 {
+				// Check if we have a selected key in the table
+				if len(m.table.Rows()) > 0 {
+					selectedRow := m.table.SelectedRow()
+					if selectedRow != nil {
+						// Edit the selected key
+						m.originalKeyName = selectedRow[0]
+						m.currentKey = m.originalKeyName
+						m.textInput.SetValue(m.originalKeyName)
+						m.state = stateEditKey
+						return m, textinput.Blink
+					}
+				}
+				// If no key selected, edit the current bucket
+				m.originalBucketName = m.currentBucket
+				m.textInput.SetValue(m.currentBucket)
+				m.state = stateEditBucket
+				return m, textinput.Blink
+			}
+
+		case key.Matches(msg, m.keyMap.Delete):
+			if m.state == stateBuckets && len(m.buckets) > 0 && len(m.table.Rows()) > 0 {
+				selectedRow := m.table.SelectedRow()
+				if selectedRow != nil {
+					// Store the key to be deleted and show confirmation
+					m.deleteKey = selectedRow[0]
+					m.state = stateConfirmDelete
+					return m, nil
+				}
+			}
+
+		case key.Matches(msg, m.keyMap.DeleteBucket):
+			if m.state == stateBuckets && len(m.buckets) > 0 {
+				// Store the bucket to be deleted and show confirmation
+				m.deleteBucket = m.currentBucket
+				m.state = stateConfirmDeleteBucket
+				return m, nil
+			}
+
 		case key.Matches(msg, m.keyMap.PrevTab):
 			if m.state == stateBuckets && len(m.buckets) > 0 {
 				m.activeTab = max(0, m.activeTab-1)
@@ -302,7 +363,31 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 
 		case key.Matches(msg, m.keyMap.Enter):
-			if m.state == stateCreateBucket {
+			if m.state == stateConfirmDelete {
+				// Delete the key
+				err := m.db.DeleteValue(m.currentBucket, m.deleteKey)
+				if err != nil {
+					m.err = err
+					return m, nil
+				}
+				m.state = stateBuckets
+				m.deleteKey = ""
+				return m, m.loadKeysAndValues(m.currentBucket)
+			} else if m.state == stateConfirmDeleteBucket {
+				// Delete the bucket
+				err := m.db.DeleteBucket(m.deleteBucket)
+				if err != nil {
+					m.err = err
+					return m, nil
+				}
+				m.state = stateBuckets
+				m.deleteBucket = ""
+				// Reset activeTab if we deleted the current bucket
+				if m.activeTab >= len(m.buckets)-1 {
+					m.activeTab = max(0, len(m.buckets)-2)
+				}
+				return m, m.loadBuckets
+			} else if m.state == stateCreateBucket {
 				newBucket := m.textInput.Value()
 				if newBucket != "" {
 					err := m.db.CreateBucket(newBucket)
@@ -310,6 +395,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 						m.err = err
 						return m, nil
 					}
+					m.newlyCreatedBucket = newBucket
 					m.state = stateBuckets
 					return m, m.loadBuckets
 				}
@@ -334,6 +420,38 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					}
 					m.state = stateBuckets
 					return m, m.loadKeysAndValues(m.currentBucket)
+				}
+			} else if m.state == stateEditBucket && m.originalBucketName != "" {
+				newBucketName := m.textInput.Value()
+				if newBucketName != "" && newBucketName != m.originalBucketName {
+					err := m.db.RenameBucket(m.originalBucketName, newBucketName)
+					if err != nil {
+						m.err = err
+						return m, nil
+					}
+					// Update the current bucket name to the new name
+					m.currentBucket = newBucketName
+					m.state = stateBuckets
+					return m, m.loadBuckets
+				} else if newBucketName == m.originalBucketName {
+					// No change, just go back
+					m.state = stateBuckets
+					return m, nil
+				}
+			} else if m.state == stateEditKey && m.originalKeyName != "" {
+				newKeyName := m.textInput.Value()
+				if newKeyName != "" && newKeyName != m.originalKeyName {
+					err := m.db.RenameKey(m.currentBucket, m.originalKeyName, newKeyName)
+					if err != nil {
+						m.err = err
+						return m, nil
+					}
+					m.state = stateBuckets
+					return m, m.loadKeysAndValues(m.currentBucket)
+				} else if newKeyName == m.originalKeyName {
+					// No change, just go back
+					m.state = stateBuckets
+					return m, nil
 				}
 			} else if m.state == stateBuckets && len(m.buckets) > 0 && len(m.table.Rows()) > 0 {
 				// Get the selected row from the table
@@ -366,6 +484,35 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case bucketsLoadedMsg:
 		m.buckets = msg.buckets
 		if len(m.buckets) > 0 {
+			// If we just created a new bucket, find it and make it active
+			if m.newlyCreatedBucket != "" {
+				for i, bucket := range m.buckets {
+					if bucket == m.newlyCreatedBucket {
+						m.activeTab = i
+						m.newlyCreatedBucket = "" // Clear the flag
+						break
+					}
+				}
+			}
+
+			// If we have a current bucket name (e.g., after renaming), find its new index
+			if m.currentBucket != "" {
+				for i, bucket := range m.buckets {
+					if bucket == m.currentBucket {
+						m.activeTab = i
+						break
+					}
+				}
+			}
+
+			// Ensure activeTab is within bounds
+			if m.activeTab >= len(m.buckets) {
+				m.activeTab = len(m.buckets) - 1
+			}
+			if m.activeTab < 0 {
+				m.activeTab = 0
+			}
+
 			m.currentBucket = m.buckets[m.activeTab]
 			return m, m.loadKeysAndValues(m.currentBucket)
 		}
@@ -385,10 +532,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case stateBuckets:
 		m.table, cmd = m.table.Update(msg)
 
-	case stateCreateBucket, stateCreateKey:
-		m.textInput, cmd = m.textInput.Update(msg)
-
-	case stateEditValue:
+	case stateCreateBucket, stateCreateKey, stateEditBucket, stateEditKey, stateEditValue:
 		m.textInput, cmd = m.textInput.Update(msg)
 	}
 
@@ -431,6 +575,23 @@ func (m *Model) View() string {
 	case stateEditValue:
 		s.WriteString(fmt.Sprintf("Edit value of key '%s' in bucket '%s':\n\n", m.currentKey, m.currentBucket))
 		s.WriteString(m.textInput.View())
+
+	case stateEditBucket:
+		s.WriteString(fmt.Sprintf("Edit bucket name '%s':\n\n", m.originalBucketName))
+		s.WriteString(m.textInput.View())
+
+	case stateEditKey:
+		s.WriteString(fmt.Sprintf("Edit key name '%s' in bucket '%s':\n\n", m.originalKeyName, m.currentBucket))
+		s.WriteString(m.textInput.View())
+
+	case stateConfirmDelete:
+		s.WriteString(fmt.Sprintf("Are you sure you want to delete key '%s' from bucket '%s'?\n\n", m.deleteKey, m.currentBucket))
+		s.WriteString("Press Enter to confirm, Esc to cancel")
+
+	case stateConfirmDeleteBucket:
+		s.WriteString(fmt.Sprintf("Are you sure you want to delete bucket '%s'?\n\n", m.deleteBucket))
+		s.WriteString("This will delete all keys and values in the bucket.\n")
+		s.WriteString("Press Enter to confirm, Esc to cancel")
 	}
 
 	// Help
@@ -470,16 +631,16 @@ func (m *Model) Close() {
 // ShortHelp returns keybindings to be shown in the short help view.
 // It's part of the help.KeyMap interface.
 func (k KeyMap) ShortHelp() []key.Binding {
-	return []key.Binding{k.Up, k.Down, k.Enter, k.Esc, k.NewTab, k.New, k.Help, k.Quit}
+	return []key.Binding{k.Up, k.Down, k.Enter, k.Esc, k.NewTab, k.New, k.Edit, k.Delete, k.DeleteBucket, k.Help, k.Quit}
 }
 
 // FullHelp returns keybindings for the expanded help view.
 // It's part of the help.KeyMap interface.
 func (k KeyMap) FullHelp() [][]key.Binding {
 	return [][]key.Binding{
-		{k.Up, k.Down, k.Left, k.Right},             // first column
-		{k.Enter, k.Esc, k.NewTab, k.New, k.Delete}, // second column
-		{k.PrevTab, k.NextTab, k.SelectTab},         // third column
-		{k.Help, k.Quit},                            // fourth column
+		{k.Up, k.Down, k.Left, k.Right},                                     // first column
+		{k.Enter, k.Esc, k.NewTab, k.New, k.Edit, k.Delete, k.DeleteBucket}, // second column
+		{k.PrevTab, k.NextTab, k.SelectTab},                                 // third column
+		{k.Help, k.Quit},                                                    // fourth column
 	}
 }
