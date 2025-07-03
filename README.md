@@ -168,6 +168,9 @@ GOOS=windows GOARCH=amd64 go build -o bolt-tui-windows.exe
 - [ ] Add feature to jump tab with number
 - [ ] Have switch to view `byte` value or `string` value
 
+## Example
+<img width="1013" alt="image" src="https://github.com/user-attachments/assets/f080a9ea-6bc1-4127-bd17-db4e0fbde708" />
+
 ## Contributing
 
 1. Fork the repository
@@ -175,7 +178,6 @@ GOOS=windows GOARCH=amd64 go build -o bolt-tui-windows.exe
 3. Commit your changes (`git commit -m 'Add some amazing feature'`)
 4. Push to the branch (`git push origin feat/amazing-feature`)
 5. Open a Pull Request
-
 
 ## License
 
