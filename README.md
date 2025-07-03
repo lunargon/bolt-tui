@@ -7,7 +7,6 @@ A Terminal User Interface (TUI) for viewing and managing BoltDB files. Built wit
 - 🗂️ **Interactive File Picker**: Browse and select BoltDB files from your filesystem
 - 📊 **Database Browser**: View all buckets and their key-value pairs
 - ✏️ **Edit Operations**: Create, update, and delete buckets and keys
-- 🎨 **Terminal UI**: Clean terminal interface with syntax highlighting
 - ⌨️ **Keyboard Navigation**: Full keyboard support with intuitive shortcuts
 - 🔍 **Help System**: Built-in help to guide you through available commands
 - 📑 **Tab Navigation**: Organize your work with multiple tabs
