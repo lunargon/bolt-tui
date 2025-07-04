@@ -1,0 +1,43 @@
+<div class="space-y-4">
+    <div class="flex items-center justify-between">
+        <h3 class="text-lg font-medium text-gray-900">Create New Bucket</h3>
+        <button class="text-gray-400 hover:text-gray-600"
+                onclick="document.getElementById('modal').classList.add('hidden')">
+            <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+        </button>
+    </div>
+    
+    <form hx-post="/api/v1/databases/{{.database}}/buckets"
+          hx-target="#main-content"
+          hx-swap="outerHTML"
+          _="on htmx:afterRequest[detail.xhr.status == 201] 
+             call document.getElementById('modal').classList.add('hidden')
+             then call showToast('Bucket created successfully!', 'success')">
+        
+        <div class="space-y-4">
+            <div>
+                <label for="bucket_name" class="block text-sm font-medium text-gray-700">Bucket Name</label>
+                <input type="text" 
+                       id="bucket_name" 
+                       name="bucket_name" 
+                       required
+                       class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                       placeholder="Enter bucket name">
+            </div>
+            
+            <div class="flex justify-end space-x-3 pt-4">
+                <button type="button" 
+                        class="bg-gray-300 hover:bg-gray-400 text-gray-700 px-4 py-2 rounded-md transition-colors"
+                        onclick="document.getElementById('modal').classList.add('hidden')">
+                    Cancel
+                </button>
+                <button type="submit" 
+                        class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-md transition-colors">
+                    Create Bucket
+                </button>
+            </div>
+        </div>
+    </form>
+</div> 
