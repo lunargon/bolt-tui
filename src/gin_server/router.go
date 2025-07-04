@@ -1,16 +1,31 @@
-package gin
+package gin_server
 
 import (
 	"github.com/gin-gonic/gin"
 	"github.com/lunargon/bolt-tui/src/bolt"
 )
 
-// SetupRoutes configures all the routes for the BoltDB API
+// SetupRoutes configures all the routes for the BoltDB API and web interface
 func SetupRoutes(r *gin.Engine, factory *bolt.Factory) {
 	// Create handlers
 	factoryHandler := NewFactoryHandler(factory)
+	viewHandler := NewViewHandler(factory)
 
-	// API routes with factory pattern (multi-database support)
+	// Set HTML template renderer
+	r.LoadHTMLGlob("src/gin_server/views/*.html")
+
+	// View routes
+	r.GET("/", viewHandler.Index)
+	r.GET("/databases", viewHandler.DatabaseList)
+	r.GET("/databases/:name/buckets", viewHandler.BucketsView)
+	r.GET("/databases/:name/buckets/:bucket/keys", viewHandler.KeysView)
+	r.GET("/databases/:name/buckets/:bucket/keys/:key", viewHandler.KeyValueView)
+	r.GET("/views/create-bucket-form", viewHandler.CreateBucketForm)
+	r.GET("/views/edit-bucket-form", viewHandler.EditBucketForm)
+	r.GET("/views/create-key-form", viewHandler.CreateKeyForm)
+	r.GET("/views/edit-key-form", viewHandler.EditKeyForm)
+
+	// API routes
 	api := r.Group("/api/v1")
 	{
 		// Database management routes

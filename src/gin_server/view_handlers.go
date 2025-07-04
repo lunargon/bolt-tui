@@ -1,4 +1,4 @@
-package gin
+package gin_server
 
 import (
 	"html/template"
@@ -15,7 +15,7 @@ type ViewHandler struct {
 
 func NewViewHandler(factory *bolt.Factory) *ViewHandler {
 	// Load all templates
-	tmpl := template.Must(template.ParseGlob("src/gin/views/*.html"))
+	tmpl := template.Must(template.ParseGlob("src/gin_server/views/*.html"))
 
 	return &ViewHandler{
 		factory: factory,
