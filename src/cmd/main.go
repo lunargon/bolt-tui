@@ -27,7 +27,7 @@ var rootCmd = &cobra.Command{
 			}
 
 			// Check if file exists
-			if _, err := os.Stat(absPath); os.IsNotExist(err) {
+			if _, err = os.Stat(absPath); os.IsNotExist(err) {
 				fmt.Printf("File does not exist: %s\n", absPath)
 				os.Exit(1)
 			}
